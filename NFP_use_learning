@@ -1,0 +1,40 @@
+#The NFP_learning progress
+
+#安装所需的R包和数据
+source("http://bioconductor.org/biocLite.R")
+biocLite(c("graph","KEGGgraph"))
+if (!require(devtools))
+  install.packages("devtools")
+devtools::install_github("yiluheihei/NFP") #从Github上安装最新更新的NFP包（老版本NFP中有依赖包升级，已不能使用）
+if (!require("NFPdata")) { 
+  install_data_package() #安装数据
+}
+
+#载入所需的包
+require("graph")
+require("KEGGgraph")
+require("NFP")
+require("graphite")
+#require("BiocGenerics")
+#require("parallel")
+#require("igraph")
+
+## kegg_refnet <- load_KEGG_refnet(organism = 'hsa') #下载最新的数据(信号通路图)
+data(kegg_refnet) #加载已有的数据（信号通路图）
+
+human_pathway <- pathways("hsapiens", "kegg") #在KEGG库中选取人的分子路径网络，在以后的应用中需要结合实验序列通过RNA-seq等构建分子路径网络
+## just choose first two pathway maps for testing p <- human_pathway[1:2]
+p <- human_pathway[1:2] 
+query_net <- lapply(p, pathwayGraph) #将网络转化为graphNEL类型  
+
+group_names <- group(kegg_refnet)$name #提取组名
+sample_NFPRefnet <- subnet(kegg_refnet, group_names[1:2],list(1:5,1:5)) #选取参照网络
+
+## In order to save calculating time, we take nperm = 10
+NFP_score <- lapply(query_net, calc_sim_score,NFPnet = sample_NFPRefnet,
+  nperm = 10) #计算标准化相似性分数
+  
+randomized_score  <- perm_score(NFP_score[[1]]) #提取标准化相似分数
+cluster <- cluster_info(NFP_score[[1]]) #提取聚类后的类
+
+plot_NFP(NFP_score[[1]]) #画出指纹图
